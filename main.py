@@ -11,7 +11,8 @@ from pydantic import BaseModel
 app = FastAPI()
 
 # Load the model once when the application starts
-model_id = "black-forest-labs/FLUX.1-schnell"
+# model_id = "black-forest-labs/FLUX.1-schnell"
+model_id = "black-forest-labs/FLUX.1-dev"
 pipe = FluxPipeline.from_pretrained(model_id, torch_dtype=torch.bfloat16)
 pipe.enable_model_cpu_offload()
 
@@ -24,7 +25,7 @@ async def generate_image(prompt: str = Query(..., description="The prompt for im
         image = pipe(
             prompt,
             output_type="pil",
-            num_inference_steps=4,
+            num_inference_steps=50,
             generator=generator
         ).images[0]
 
