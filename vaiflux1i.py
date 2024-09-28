@@ -14,7 +14,7 @@ pipe = FluxImg2ImgPipeline.from_pretrained(model_id, torch_dtype=torch.bfloat16)
 pipe.enable_model_cpu_offload()
 print(f"Model loading time: {time.time() - start_time:.2f} seconds")
 
-prompt = "Anime-style of the same image"
+prompt = "Red shirt"
 seed = random.randint(0, 2**32 - 1)
 generator = torch.Generator("cpu").manual_seed(seed)
 
