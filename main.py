@@ -1,10 +1,16 @@
 import subprocess
 import base64
-from fastapi import FastAPI, HTTPException, Query, File, UploadFile
+from fastapi import FastAPI, HTTPException, Query, File, UploadFile, Body
 from fastapi.responses import Response
 import os
+from pydantic import BaseModel
 
 app = FastAPI()
+
+class Img2ImgRequest(BaseModel):
+    prompt: str
+    image_base64: str
+    strength: float = 0.55
 
 @app.get("/generate")
 async def generate_image(prompt: str = Query(..., description="The prompt for image generation")):
@@ -24,14 +30,10 @@ async def generate_image(prompt: str = Query(..., description="The prompt for im
         raise HTTPException(status_code=500, detail="Unexpected error occurred")
 
 @app.post("/generate_img2img")
-async def generate_img2img(
-    prompt: str = Query(..., description="The prompt for image generation"),
-    image_base64: str = Query(..., description="The input image as a base64 encoded string"),
-    strength: float = Query(0.55, description="Strength of the transformation (0-1)")
-):
+async def generate_img2img(request: Img2ImgRequest = Body(...)):
     try:
         # Decode the base64 string to binary data
-        image_data = base64.b64decode(image_base64)
+        image_data = base64.b64decode(request.image_base64)
 
         # Save the decoded image temporarily
         temp_image_path = "temp_input_image.png"
@@ -40,7 +42,7 @@ async def generate_img2img(
 
         # Call the AI processor as a subprocess
         result = subprocess.run(
-            ["python", "imgen_img2img.py", prompt, temp_image_path, str(strength)],
+            ["python", "imgen_img2img.py", request.prompt, temp_image_path, str(request.strength)],
             capture_output=True,
             text=True,
             check=True

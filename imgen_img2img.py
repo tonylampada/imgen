@@ -26,7 +26,7 @@ def generate_img2img(prompt, input_image_path, strength):
             output_type="pil",
             num_inference_steps=50,
             generator=generator
-        ).images[0]
+        ).images[0].resize(init_image.size)
 
         # Convert PIL Image to base64
         buffered = BytesIO()
