@@ -4,7 +4,7 @@ anyio==4.6.0
 certifi==2024.8.30
 charset-normalizer==3.3.2
 click==8.1.7
-diffusers==0.30.3
+diffusers @ git+https://github.com/huggingface/diffusers.git@81cf3b2f155f1de322079af28f625349ee21ec6b
 fastapi==0.115.0
 filelock==3.16.1
 fsspec==2024.9.0

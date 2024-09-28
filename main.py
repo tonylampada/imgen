@@ -1,43 +1,64 @@
-import torch
-from diffusers import FluxPipeline
-import time
-import random
+import subprocess
 import base64
-from io import BytesIO
-from fastapi import FastAPI, HTTPException, Query
+from fastapi import FastAPI, HTTPException, Query, File, UploadFile
 from fastapi.responses import Response
-from pydantic import BaseModel
+import os
 
 app = FastAPI()
-
-# Load the model once when the application starts
-# model_id = "black-forest-labs/FLUX.1-schnell"
-model_id = "black-forest-labs/FLUX.1-dev"
-pipe = FluxPipeline.from_pretrained(model_id, torch_dtype=torch.bfloat16)
-pipe.enable_model_cpu_offload()
 
 @app.get("/generate")
 async def generate_image(prompt: str = Query(..., description="The prompt for image generation")):
     try:
-        seed = random.randint(0, 2**32 - 1)
-        generator = torch.Generator("cpu").manual_seed(seed)
-
-        image = pipe(
-            prompt,
-            output_type="pil",
-            num_inference_steps=50,
-            generator=generator
-        ).images[0]
-
-        # Convert PIL Image to base64
-        buffered = BytesIO()
-        image.save(buffered, format="PNG")
-        img_str = 'data:image/png;base64,' + base64.b64encode(buffered.getvalue()).decode()
-        print(img_str[:100])
+        # Call the AI processor as a subprocess
+        result = subprocess.run(["python", "imgen.py", prompt], capture_output=True, text=True, check=True)
+        
+        # The AI processor will return the base64 encoded image
+        img_str = result.stdout.strip()
+        
         return Response(content=img_str, media_type="image/png;base64")
+    except subprocess.CalledProcessError as e:
+        print(f"AI processor error: {e.stderr}")
+        raise HTTPException(status_code=500, detail="AI processing failed")
     except Exception as e:
-        print(e)
-        raise HTTPException(status_code=500, detail=str(e))
+        print(f"Unexpected error: {str(e)}")
+        raise HTTPException(status_code=500, detail="Unexpected error occurred")
+
+@app.post("/generate_img2img")
+async def generate_img2img(
+    prompt: str = Query(..., description="The prompt for image generation"),
+    image_base64: str = Query(..., description="The input image as a base64 encoded string"),
+    strength: float = Query(0.55, description="Strength of the transformation (0-1)")
+):
+    try:
+        # Decode the base64 string to binary data
+        image_data = base64.b64decode(image_base64)
+
+        # Save the decoded image temporarily
+        temp_image_path = "temp_input_image.png"
+        with open(temp_image_path, "wb") as temp_file:
+            temp_file.write(image_data)
+
+        # Call the AI processor as a subprocess
+        result = subprocess.run(
+            ["python", "imgen_img2img.py", prompt, temp_image_path, str(strength)],
+            capture_output=True,
+            text=True,
+            check=True
+        )
+        
+        # Clean up the temporary file
+        os.remove(temp_image_path)
+        
+        # The AI processor will return the base64 encoded image
+        img_str = result.stdout.strip()
+        
+        return Response(content=img_str, media_type="image/png;base64")
+    except subprocess.CalledProcessError as e:
+        print(f"AI processor error: {e.stderr}")
+        raise HTTPException(status_code=500, detail="AI processing failed")
+    except Exception as e:
+        print(f"Unexpected error: {str(e)}")
+        raise HTTPException(status_code=500, detail="Unexpected error occurred")
 
 if __name__ == "__main__":
     import uvicorn
